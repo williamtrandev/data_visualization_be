@@ -1,0 +1,28 @@
+# Visual Studio / .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.log
+*.pdb
+*.dll
+*.exe
+*.dbmdl
+*.dbproj.schemaview
+*.csproj.user
+
+# Rider
+.idea/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# ASP.NET Core
+appsettings.Development.json
+
+# Others
+*.DS_Store
