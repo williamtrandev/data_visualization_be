@@ -263,28 +263,30 @@ namespace DataVisualizationAPI.Services
             var schema = new List<ColumnSchema>();
             var data = new List<Dictionary<string, object>>();
 
-            using var reader = new StreamReader(file.OpenReadStream());
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            List<string> headers;
 
-            // Read header row
-            csv.Read();
-            csv.ReadHeader();
-            var headers = csv.HeaderRecord;
-
-            // Analyze first few rows to determine data types
+            // First pass: sample rows to infer schema
             var sampleRows = new List<Dictionary<string, string>>();
-            var rowCount = 0;
             const int sampleSize = 100;
 
-            while (csv.Read() && rowCount < sampleSize)
+            using (var reader = new StreamReader(file.OpenReadStream()))
+            using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
             {
-                var row = new Dictionary<string, string>();
-                foreach (var header in headers)
+                csv.Read();
+                csv.ReadHeader();
+                headers = csv.HeaderRecord.ToList();
+
+                int rowCount = 0;
+                while (csv.Read() && rowCount < sampleSize)
                 {
-                    row[header] = csv.GetField(header);
+                    var row = new Dictionary<string, string>();
+                    foreach (var header in headers)
+                    {
+                        row[header] = csv.GetField(header);
+                    }
+                    sampleRows.Add(row);
+                    rowCount++;
                 }
-                sampleRows.Add(row);
-                rowCount++;
             }
 
             // Determine column types and create schema
@@ -302,21 +304,23 @@ namespace DataVisualizationAPI.Services
                 });
             }
 
-            // Reset reader to start of data
-            reader.BaseStream.Position = 0;
-            csv.Read();
-            csv.ReadHeader();
-
-            // Read all data
-            while (csv.Read())
+            // Second pass: read entire CSV data
+            using (var reader = new StreamReader(file.OpenReadStream()))
+            using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
             {
-                var row = new Dictionary<string, object>();
-                foreach (var header in headers)
+                csv.Read();
+                csv.ReadHeader();
+
+                while (csv.Read())
                 {
-                    var value = csv.GetField(header);
-                    row[header] = ConvertValue(value, schema.First(s => s.Name == header).DataType);
+                    var row = new Dictionary<string, object>();
+                    foreach (var header in headers)
+                    {
+                        var value = csv.GetField(header);
+                        row[header] = ConvertValue(value, schema.First(s => s.Name == header).DataType);
+                    }
+                    data.Add(row);
                 }
-                data.Add(row);
             }
 
             return (schema, data);

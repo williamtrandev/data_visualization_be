@@ -200,34 +200,48 @@ namespace DataVisualizationAPI.Services
 
         private double AggregateValues(IEnumerable<object> values, string aggregation)
         {
-            var numericValues = values
-                .Where(v => v != null)
-                .Select(v =>
+            var nonNullValues = values.Where(v => v != null).ToList();
+
+            if (!nonNullValues.Any())
+                return 0;
+
+            if (aggregation.Equals("count", StringComparison.OrdinalIgnoreCase))
+            {
+                return nonNullValues.Count;
+            }
+
+            var numericValues = nonNullValues.Select(v =>
+            {
+                if (v is JsonElement jsonElement)
                 {
-                    if (v is JsonElement jsonElement)
+                    return jsonElement.ValueKind switch
                     {
-                        return jsonElement.ValueKind switch
-                        {
-                            JsonValueKind.Number => jsonElement.GetDouble(),
-                            JsonValueKind.String => double.TryParse(jsonElement.GetString(), out var result) ? result : 0,
-                            _ => 0
-                        };
-                    }
-                    else if (v is IConvertible convertible)
+                        JsonValueKind.Number => jsonElement.GetDouble(),
+                        JsonValueKind.String => double.TryParse(jsonElement.GetString(), out var result) ? result : double.NaN,
+                        JsonValueKind.True => 1,
+                        JsonValueKind.False => 0,
+                        _ => double.NaN
+                    };
+                }
+                else if (v is bool b)
+                {
+                    return b ? 1 : 0;
+                }
+                else if (v is IConvertible convertible)
+                {
+                    try
                     {
-                        try
-                        {
-                            return Convert.ToDouble(convertible);
-                        }
-                        catch
-                        {
-                            return 0;
-                        }
+                        return Convert.ToDouble(convertible);
                     }
-                    return 0;
-                })
-                .Where(v => v != 0)
-                .ToList();
+                    catch
+                    {
+                        return double.NaN;
+                    }
+                }
+                return double.NaN;
+            })
+            .Where(v => !double.IsNaN(v))
+            .ToList();
 
             if (!numericValues.Any())
                 return 0;
@@ -236,10 +250,9 @@ namespace DataVisualizationAPI.Services
             {
                 "sum" => numericValues.Sum(),
                 "avg" => numericValues.Average(),
-                "count" => numericValues.Count,
                 "min" => numericValues.Min(),
                 "max" => numericValues.Max(),
-                _ => numericValues.Sum()
+                _ => numericValues.Sum() // default fallback
             };
         }
 
