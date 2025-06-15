@@ -33,6 +33,18 @@ namespace DataVisualizationAPI.Data
             modelBuilder.Entity<DatasetData>()
                 .Property(d => d.RowData)
                 .HasColumnType("nvarchar(max)");
+
+            modelBuilder.Entity<Dashboard>()
+                .HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Dashboard>()
+                .HasMany(d => d.Items)
+                .WithOne(i => i.Dashboard)
+                .HasForeignKey(i => i.DashboardId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public DbSet<User> Users { get; set; }

@@ -92,13 +92,13 @@ namespace DataVisualizationAPI.Controllers
         {
             if (string.IsNullOrWhiteSpace(dto.UserName) || string.IsNullOrWhiteSpace(dto.Password))
             {
-                return BadRequest(new { message = "Email and password are required." });
+                return BadRequest(new { message = "Username and password are required." });
             }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.UserName);
             if (user == null)
             {
-                return NotFound(new { message = "Email not found." });
+                return NotFound(new { message = "Username not found." });
             }
 
             if (!Verify(dto.Password, user.Password))
