@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace DataVisualizationAPI.Controllers
 {
@@ -19,18 +19,15 @@ namespace DataVisualizationAPI.Controllers
         private readonly IDataImportService _importService;
         private readonly IDataQueryService _queryService;
         private readonly IDatasetService _datasetService;
-        private readonly ILogger<DatasetsController> _logger;
 
         public DatasetsController(
             IDataImportService importService,
             IDataQueryService queryService,
-            IDatasetService datasetService,
-            ILogger<DatasetsController> logger)
+            IDatasetService datasetService)
         {
             _importService = importService;
             _queryService = queryService;
             _datasetService = datasetService;
-            _logger = logger;
         }
 
         [HttpPost("import/file")]
@@ -103,7 +100,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting datasets for dropdown");
+                Log.Error(ex, "Error getting datasets for dropdown");
                 return StatusCode(500, new { message = "An error occurred while getting datasets" });
             }
         }
@@ -124,7 +121,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing datasets");
+                Log.Error(ex, "Error listing datasets");
                 return StatusCode(500, "An error occurred while listing datasets");
             }
         }
@@ -199,7 +196,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting data source detail for dataset {DatasetId}", datasetId);
+                Log.Error(ex, "Error getting data source detail for dataset {DatasetId}", datasetId);
                 return StatusCode(500, "An error occurred while getting data source detail");
             }
         }
@@ -232,7 +229,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting data source detail for dataset {DatasetId}", datasetId);
+                Log.Error(ex, "Error getting data source detail for dataset {DatasetId}", datasetId);
                 return StatusCode(500, "An error occurred while getting data source detail");
             }
         }
@@ -265,7 +262,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error filtering data for dataset {DatasetId}", datasetId);
+                Log.Error(ex, "Error filtering data for dataset {DatasetId}", datasetId);
                 return StatusCode(500, "An error occurred while filtering data");
             }
         }
@@ -298,7 +295,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error filtering data for dataset {DatasetId}", datasetId);
+                Log.Error(ex, "Error filtering data for dataset {DatasetId}", datasetId);
                 return StatusCode(500, "An error occurred while filtering data");
             }
         }
@@ -328,7 +325,7 @@ namespace DataVisualizationAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error merging datasets");
+                Log.Error(ex, "Error merging datasets");
                 return StatusCode(500, new { message = "An error occurred while merging datasets" });
             }
         }

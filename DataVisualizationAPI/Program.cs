@@ -3,8 +3,26 @@ using DataVisualizationAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Serilog;
+using Serilog.Events;
+using System.Net;
+using System.Net.Sockets;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Udp(
+        remoteAddress: builder.Configuration["Papertrail:Host"],
+        remotePort: int.Parse(builder.Configuration["Papertrail:Port"]),
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 
@@ -51,6 +69,8 @@ builder.Services.AddScoped<IDataImportService, DataImportService>();
 builder.Services.AddScoped<IDataQueryService, DataQueryService>();
 builder.Services.AddScoped<IDatasetService, DatasetService>();
 builder.Services.AddScoped<IChartDataService, ChartDataService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddSingleton<IRedisService, RedisService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
