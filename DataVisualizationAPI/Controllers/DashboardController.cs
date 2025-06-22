@@ -56,8 +56,8 @@ namespace DataVisualizationAPI.Controllers
                     Title = item.Title,
                     DataSourceId = item.DataSourceId,
                     ChartOptions = item.ChartOptions,
-                    BackgroundColor = item.BackgroundColor,
-                    BorderColor = item.BorderColor
+                    //BackgroundColor = item.BackgroundColor,
+                    //BorderColor = item.BorderColor
                 }).ToList()
             };
 
@@ -111,8 +111,8 @@ namespace DataVisualizationAPI.Controllers
                     Title = item.Title,
                     DataSourceId = item.DataSourceId,
                     ChartOptions = item.ChartOptions,
-                    BackgroundColor = item.BackgroundColor,
-                    BorderColor = item.BorderColor
+                    //BackgroundColor = item.BackgroundColor,
+                    //BorderColor = item.BorderColor
                 }).ToList() ?? new List<DashboardItem>()
             };
 
@@ -161,8 +161,8 @@ namespace DataVisualizationAPI.Controllers
                         item.Title = itemDto.Title;
                         item.DataSourceId = itemDto.DataSourceId;
                         item.ChartOptions = itemDto.ChartOptions;
-                        item.BackgroundColor = itemDto.BackgroundColor;
-                        item.BorderColor = itemDto.BorderColor;
+                        //item.BackgroundColor = itemDto.BackgroundColor;
+                        //item.BorderColor = itemDto.BorderColor;
                     }
                 }
                 else
@@ -178,8 +178,8 @@ namespace DataVisualizationAPI.Controllers
                         Title = itemDto.Title,
                         DataSourceId = itemDto.DataSourceId,
                         ChartOptions = itemDto.ChartOptions,
-                        BackgroundColor = itemDto.BackgroundColor,
-                        BorderColor = itemDto.BorderColor
+                        //BackgroundColor = itemDto.BackgroundColor,
+                        //BorderColor = itemDto.BorderColor
                     });
                 }
             }
