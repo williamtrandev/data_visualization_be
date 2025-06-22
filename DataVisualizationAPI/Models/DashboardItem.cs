@@ -30,7 +30,7 @@ namespace DataVisualizationAPI.Models
         public string DataSourceId { get; set; }
 
         public string ChartOptions { get; set; } // Lưu dưới dạng JSON
-        public string BackgroundColor { get; set; }
-        public string BorderColor { get; set; }
+        //public string BackgroundColor { get; set; }
+        //public string BorderColor { get; set; }
     }
 }
