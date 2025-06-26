@@ -16,8 +16,8 @@ namespace DataVisualizationAPI.DTOs
         public string Title { get; set; }
         public string DataSourceId { get; set; }
         public string ChartOptions { get; set; } // JSON string
-        public string BackgroundColor { get; set; }
-        public string BorderColor { get; set; }
+        //public string BackgroundColor { get; set; }
+        //public string BorderColor { get; set; }
     }
 
     public class CreateDashboardRequest
