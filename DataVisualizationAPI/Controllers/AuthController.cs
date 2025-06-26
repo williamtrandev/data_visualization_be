@@ -61,8 +61,8 @@ namespace DataVisualizationAPI.Controllers
                 FullName = dto.FullName,
                 Email = dto.Email,
                 Password = hashedPassword,
-                Phone = dto.Phone,
-                Company = dto.Company
+                IsPro = false,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(user);
@@ -225,7 +225,8 @@ namespace DataVisualizationAPI.Controllers
                 fullName = user.FullName,
                 email = user.Email,
                 phone = user.Phone,
-                company = user.Company
+                company = user.Company,
+                isPro = user.IsPro
             });
         }
 
@@ -418,6 +419,89 @@ namespace DataVisualizationAPI.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Password changed successfully" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("users")]
+        public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var query = _context.Users.AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new {
+                    u.Id,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Phone,
+                    u.Company,
+                    u.IsPro,
+                    u.CreatedAt,
+                    u.UpdatedAt
+                })
+                .ToListAsync();
+            return Ok(new {
+                items = users,
+                totalCount,
+                page,
+                pageSize,
+                totalPages
+            });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("payment/total-revenue")]
+        public async Task<IActionResult> GetTotalRevenue()
+        {
+            var totalRevenue = await _context.Payments
+                .Where(p => p.Status == "SUCCESS")
+                .SumAsync(p => (decimal?)p.Amount) ?? 0;
+            var totalTransactions = await _context.Payments.CountAsync(p => p.Status == "SUCCESS");
+            return Ok(new {
+                totalRevenue,
+                totalTransactions
+            });
+        }
+
+        [HttpPost("admin-login")]
+        [AllowAnonymous]
+        public IActionResult AdminLogin([FromBody] LoginDTO dto)
+        {
+            var adminSection = _configuration.GetSection("AdminAccount");
+            var adminUsername = adminSection["Username"];
+            var adminPassword = adminSection["Password"];
+
+            if (dto.UserName != adminUsername || dto.Password != adminPassword)
+            {
+                return Unauthorized(new { message = "Invalid admin credentials." });
+            }
+
+            // Tạo token với role Admin
+            var userToken = new UserTokenDTO
+            {
+                Id = 0,
+                Username = adminUsername,
+                FullName = "Administrator",
+                Email = "admin@datavisualization.com"
+            };
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userToken.Id.ToString()),
+                new Claim(ClaimTypes.Name, userToken.Username),
+                new Claim(ClaimTypes.Email, userToken.Email),
+                new Claim(ClaimTypes.Role, "Admin")
+            };
+            var token = _jwtService.GenerateTokenWithClaims(claims);
+
+            return Ok(new
+            {
+                message = "Admin login successful.",
+                token
+            });
         }
     }
 }

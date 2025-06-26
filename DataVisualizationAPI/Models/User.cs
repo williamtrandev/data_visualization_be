@@ -24,9 +24,15 @@ namespace DataVisualizationAPI.Models
         public string Password { get; set; }
 
         [StringLength(20)]
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
         [StringLength(100)]
-        public string Company { get; set; }
+        public string? Company { get; set; }
+
+        public bool IsPro { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }

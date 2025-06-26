@@ -1,5 +1,6 @@
 using DataVisualizationAPI.Data;
 using DataVisualizationAPI.Services;
+using DataVisualizationAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -26,18 +27,14 @@ builder.Host.UseSerilog();
 
 // Add services to the container.
 
-// CORS config
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+// CORS config - Allow all
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy
-            .WithOrigins(allowedOrigins ?? Array.Empty<string>())
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()
-            .WithExposedHeaders("Content-Disposition");
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
     });
 });
 
@@ -72,6 +69,10 @@ builder.Services.AddScoped<IChartDataService, ChartDataService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddSingleton<IRedisService, RedisService>();
 
+// Add VNPay configuration
+builder.Services.Configure<VNPayConfig>(builder.Configuration.GetSection("VNPay"));
+builder.Services.AddScoped<VNPayService>();
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -87,7 +88,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // CORS middleware phải được đặt trước các middleware khác
-app.UseCors("CorsPolicy");
+app.UseCors("AllowAll");
 
 // Disable HTTPS redirection in development
 if (!app.Environment.IsDevelopment())

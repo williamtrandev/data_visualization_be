@@ -45,11 +45,18 @@ namespace DataVisualizationAPI.Data
                 .WithOne(i => i.Dashboard)
                 .HasForeignKey(i => i.DashboardId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         public DbSet<User> Users { get; set; }
         public DbSet<Dataset> Datasets { get; set; }
         public DbSet<DatasetSchema> DatasetSchemas { get; set; }
         public DbSet<DatasetData> DatasetData { get; set; }
+        public DbSet<Payment> Payments { get; set; }
     }
 }
