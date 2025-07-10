@@ -15,6 +15,10 @@ using System.Threading.Tasks;
 using CsvHelper;
 using System.Globalization;
 using OfficeOpenXml;
+using System.Net.Http;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DataVisualizationAPI.Services
 {
@@ -536,6 +540,219 @@ namespace DataVisualizationAPI.Services
                     Message = $"Failed to import data: {ex.Message}"
                 };
             }
+        }
+
+        public async Task<ImportDatasetResponse> ImportFromRestApiAsync(string apiUrl, string datasetName, string userId, RestApiImportOptions options = null)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Create dataset record
+                var dataset = new Dataset
+                {
+                    DatasetName = datasetName,
+                    SourceType = "api",
+                    SourceName = apiUrl,
+                    CreatedBy = userId,
+                    Status = "Processing"
+                };
+                _context.Datasets.Add(dataset);
+                await _context.SaveChangesAsync();
+
+                // 2. Fetch data from API
+                var data = new List<Dictionary<string, object>>();
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(options?.TimeoutSeconds ?? 30);
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                    // Add custom headers
+                    if (options?.Headers != null)
+                    {
+                        foreach (var header in options.Headers)
+                        {
+                            client.DefaultRequestHeaders.Add(header.Key, header.Value);
+                        }
+                    }
+
+                    // Build request URL with query parameters
+                    var requestUrl = apiUrl;
+                    if (options?.QueryParameters != null && options.QueryParameters.Any())
+                    {
+                        var queryString = string.Join("&", options.QueryParameters.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+                        requestUrl += (apiUrl.Contains("?") ? "&" : "?") + queryString;
+                    }
+
+                    HttpResponseMessage response;
+                    if (options?.HttpMethod?.ToUpper() == "POST" && !string.IsNullOrEmpty(options.RequestBody))
+                    {
+                        var content = new StringContent(options.RequestBody, System.Text.Encoding.UTF8, "application/json");
+                        response = await client.PostAsync(requestUrl, content);
+                    }
+                    else
+                    {
+                        response = await client.GetAsync(requestUrl);
+                    }
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to fetch data from API: {response.StatusCode} - {response.ReasonPhrase}");
+                    }
+
+                    var jsonContent = await response.Content.ReadAsStringAsync();
+                    var jsonObject = JToken.Parse(jsonContent);
+
+                    // Extract data using JSON path if specified
+                    JToken dataToken = jsonObject;
+                    if (!string.IsNullOrEmpty(options?.DataPath))
+                    {
+                        dataToken = jsonObject.SelectToken(options.DataPath);
+                        if (dataToken == null)
+                        {
+                            throw new Exception($"Data path '{options.DataPath}' not found in API response");
+                        }
+                    }
+
+                    // Process data array
+                    if (dataToken.Type == JTokenType.Array)
+                    {
+                        var maxRecords = options?.MaxRecords ?? 1000;
+                        var recordCount = 0;
+                        
+                        foreach (JToken item in dataToken)
+                        {
+                            if (recordCount >= maxRecords) break;
+                            
+                            var row = FlattenJsonObject(item, options?.FlattenNestedObjects ?? true);
+                            data.Add(row);
+                            recordCount++;
+                        }
+                    }
+                    else if (dataToken.Type == JTokenType.Object)
+                    {
+                        // Single object, wrap in array
+                        var row = FlattenJsonObject(dataToken, options?.FlattenNestedObjects ?? true);
+                        data.Add(row);
+                    }
+                    else
+                    {
+                        throw new Exception("API response does not contain an array or object of data");
+                    }
+                }
+
+                // 3. Save schema
+                var schema = new List<ColumnSchema>();
+                if (data.Any())
+                {
+                    // Infer schema from all rows to handle missing fields
+                    var allKeys = data.SelectMany(row => row.Keys).Distinct().ToList();
+                    foreach (var key in allKeys)
+                    {
+                        var values = data.Where(row => row.ContainsKey(key))
+                                       .Select(row => row[key]?.ToString() ?? "")
+                                       .ToList();
+                        
+                        schema.Add(new ColumnSchema
+                        {
+                            Name = key,
+                            DataType = DetermineColumnType(values),
+                            IsRequired = false, // API data is often optional
+                            DisplayName = key,
+                            Order = schema.Count
+                        });
+                    }
+                }
+                else
+                {
+                    throw new Exception("No data received from API to infer schema");
+                }
+
+                foreach (var column in schema)
+                {
+                    _context.DatasetSchemas.Add(new DatasetSchema
+                    {
+                        DatasetId = dataset.DatasetId,
+                        ColumnName = column.Name,
+                        DataType = column.DataType,
+                        IsRequired = column.IsRequired,
+                        DisplayName = column.DisplayName,
+                        ColumnOrder = column.Order,
+                        Description = $"Column {column.DisplayName} of type {column.DataType}"
+                    });
+                }
+                await _context.SaveChangesAsync();
+
+                // 4. Save data in batches
+                const int batchSize = 1000;
+                for (int i = 0; i < data.Count; i += batchSize)
+                {
+                    var batch = data.Skip(i).Take(batchSize);
+                    foreach (var row in batch)
+                    {
+                        _context.DatasetData.Add(new DatasetData
+                        {
+                            DatasetId = dataset.DatasetId,
+                            RowData = JsonSerializer.Serialize(row)
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                // 5. Update dataset status
+                dataset.Status = "Completed";
+                dataset.TotalRows = data.Count;
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return new ImportDatasetResponse
+                {
+                    DatasetId = dataset.DatasetId,
+                    Status = "Success",
+                    Message = $"Data imported successfully from API. {data.Count} records imported."
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error importing data from API: {ApiUrl}", apiUrl);
+                return new ImportDatasetResponse
+                {
+                    Status = "Error",
+                    Message = "Failed to import data from API: " + ex.Message
+                };
+            }
+        }
+
+        private Dictionary<string, object> FlattenJsonObject(JToken token, bool flattenNested = true)
+        {
+            var result = new Dictionary<string, object>();
+            
+            if (token.Type == JTokenType.Object)
+            {
+                foreach (JProperty property in token.Children<JProperty>())
+                {
+                    if (flattenNested && property.Value.Type == JTokenType.Object)
+                    {
+                        var nested = FlattenJsonObject(property.Value, flattenNested);
+                        foreach (var kvp in nested)
+                        {
+                            result[$"{property.Name}_{kvp.Key}"] = kvp.Value;
+                        }
+                    }
+                    else if (flattenNested && property.Value.Type == JTokenType.Array)
+                    {
+                        // Convert array to string representation
+                        result[property.Name] = property.Value.ToString();
+                    }
+                    else
+                    {
+                        result[property.Name] = property.Value.ToObject<object>();
+                    }
+                }
+            }
+            
+            return result;
         }
 
         private class ColumnSchema

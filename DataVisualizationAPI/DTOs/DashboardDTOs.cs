@@ -57,4 +57,10 @@ namespace DataVisualizationAPI.DTOs
         public int ChartCount { get; set; }
         public string FirstChartType { get; set; }
     }
+
+    public class DeleteDashboardResponse
+    {
+        public string Message { get; set; }
+        public int DeletedDashboardId { get; set; }
+    }
 } 

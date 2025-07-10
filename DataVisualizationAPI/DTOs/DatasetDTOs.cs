@@ -75,4 +75,27 @@ namespace DataVisualizationAPI.DTOs
         public string Description { get; set; }
         public int Order { get; set; }
     }
+
+    public class RestApiImportRequest
+    {
+        [Required]
+        public string DatasetName { get; set; }
+        
+        [Required]
+        public string ApiUrl { get; set; }
+        
+        public RestApiImportOptions Options { get; set; }
+    }
+
+    public class RestApiImportOptions
+    {
+        public string HttpMethod { get; set; } = "GET";
+        public Dictionary<string, string>? Headers { get; set; }
+        public Dictionary<string, string>? QueryParameters { get; set; }
+        public string? RequestBody { get; set; }
+        public string? DataPath { get; set; } // JSON path to extract data array
+        public int MaxRecords { get; set; } = 1000; // Limit number of records to import
+        public int TimeoutSeconds { get; set; } = 30;
+        public bool FlattenNestedObjects { get; set; } = true;
+    }
 } 

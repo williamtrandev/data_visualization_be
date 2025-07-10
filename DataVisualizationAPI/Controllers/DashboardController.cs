@@ -4,6 +4,7 @@ using DataVisualizationAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,10 +19,12 @@ namespace DataVisualizationAPI.Controllers
     public class DashboardController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<DashboardController> _logger;
 
-        public DashboardController(AppDbContext context)
+        public DashboardController(AppDbContext context, ILogger<DashboardController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet("{id}")]
@@ -186,6 +189,69 @@ namespace DataVisualizationAPI.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(new { message = "Dashboard updated successfully" });
+        }
+
+        /// <summary>
+        /// Deletes a dashboard by ID
+        /// </summary>
+        /// <param name="id">The ID of the dashboard to delete</param>
+        /// <returns>Success message with deleted dashboard ID</returns>
+        /// <response code="200">Dashboard deleted successfully</response>
+        /// <response code="400">Invalid dashboard ID</response>
+        /// <response code="401">User not authenticated</response>
+        /// <response code="404">Dashboard not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteDashboard(int id)
+        {
+            try
+            {
+                // Validate dashboard ID
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid dashboard ID provided: {DashboardId}", id);
+                    return BadRequest(new { message = "Invalid dashboard ID" });
+                }
+
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    _logger.LogWarning("Unauthorized dashboard deletion attempt for dashboard ID: {DashboardId}", id);
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var dashboard = await _context.Set<Dashboard>()
+                    .Include(d => d.Items)
+                    .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+
+                if (dashboard == null)
+                {
+                    _logger.LogWarning("Dashboard not found for deletion. Dashboard ID: {DashboardId}, User ID: {UserId}", id, userId);
+                    return NotFound(new { message = "Dashboard not found" });
+                }
+
+                _logger.LogInformation("Deleting dashboard. Dashboard ID: {DashboardId}, Title: {Title}, User ID: {UserId}, Item Count: {ItemCount}", 
+                    id, dashboard.Title, userId, dashboard.Items.Count);
+
+                // Xóa dashboard và tất cả các items liên quan (cascade delete)
+                _context.Remove(dashboard);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Dashboard deleted successfully. Dashboard ID: {DashboardId}, User ID: {UserId}", id, userId);
+
+                var response = new DeleteDashboardResponse
+                {
+                    Message = "Dashboard deleted successfully",
+                    DeletedDashboardId = id
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting dashboard. Dashboard ID: {DashboardId}", id);
+                return StatusCode(500, new { message = "An error occurred while deleting the dashboard" });
+            }
         }
     }
 } 

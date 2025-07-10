@@ -8,6 +8,7 @@ using System.Text.Json;
 using DataVisualizationAPI.Data;
 using DataVisualizationAPI.DTOs;
 using DataVisualizationAPI.Models;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DataVisualizationAPI.Services
 {

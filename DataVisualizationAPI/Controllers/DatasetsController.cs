@@ -84,6 +84,47 @@ namespace DataVisualizationAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Import data from REST API
+        /// </summary>
+        /// <param name="request">REST API import request with URL and options</param>
+        /// <returns>Import result with dataset ID and status</returns>
+        /// <response code="200">Data imported successfully</response>
+        /// <response code="400">Invalid request or import failed</response>
+        /// <response code="401">User not authenticated</response>
+        /// <response code="500">Internal server error</response>
+        [HttpPost("import/api")]
+        public async Task<ActionResult<ImportDatasetResponse>> ImportFromRestApi(
+            [FromBody] RestApiImportRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var result = await _importService.ImportFromRestApiAsync(
+                    request.ApiUrl,
+                    request.DatasetName,
+                    userId,
+                    request.Options);
+
+                if (result.Status == "Error")
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error importing data from REST API");
+                return StatusCode(500, new { message = "An error occurred while importing from REST API", error = ex.Message });
+            }
+        }
+
         [HttpGet("dropdown")]
         public async Task<ActionResult<List<DatasetDropdownResponse>>> GetDatasetsForDropdown()
         {

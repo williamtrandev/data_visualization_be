@@ -9,6 +9,7 @@ using DataVisualizationAPI.Models;
 using DataVisualizationAPI.DTOs;
 using DataVisualizationAPI.Data;
 using DataVisualizationAPI.DTOs.Dropdown;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace DataVisualizationAPI.Services
 {

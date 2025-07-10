@@ -1,0 +1,104 @@
+### Test Dashboard API
+GET {{baseUrl}}/api/dashboard
+Authorization: Bearer {{token}}
+
+### Get Dashboard by ID
+GET {{baseUrl}}/api/dashboard/1
+Authorization: Bearer {{token}}
+
+### Create Dashboard
+POST {{baseUrl}}/api/dashboard
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Test Dashboard",
+  "items": []
+}
+
+### Update Dashboard
+PUT {{baseUrl}}/api/dashboard
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 1,
+  "title": "Updated Dashboard",
+  "items": []
+}
+
+### Delete Dashboard
+DELETE {{baseUrl}}/api/dashboard/1
+Authorization: Bearer {{token}}
+
+### Import from REST API - JSONPlaceholder Posts
+POST {{baseUrl}}/api/datasets/import/api
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "datasetName": "JSONPlaceholder Posts",
+  "apiUrl": "https://jsonplaceholder.typicode.com/posts",
+  "options": {
+    "httpMethod": "GET",
+    "maxRecords": 100,
+    "timeoutSeconds": 30,
+    "flattenNestedObjects": true
+  }
+}
+
+### Import from REST API - Random User API
+POST {{baseUrl}}/api/datasets/import/api
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "datasetName": "Random Users",
+  "apiUrl": "https://randomuser.me/api/",
+  "options": {
+    "httpMethod": "GET",
+    "queryParameters": {
+      "results": "50",
+      "nat": "us,gb,ca"
+    },
+    "dataPath": "results",
+    "maxRecords": 50,
+    "timeoutSeconds": 30,
+    "flattenNestedObjects": true
+  }
+}
+
+### Import from REST API - Countries API
+POST {{baseUrl}}/api/datasets/import/api
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "datasetName": "Countries Data",
+  "apiUrl": "https://restcountries.com/v3.1/all",
+  "options": {
+    "httpMethod": "GET",
+    "maxRecords": 200,
+    "timeoutSeconds": 60,
+    "flattenNestedObjects": true
+  }
+}
+
+### Import from REST API - GitHub API (with headers)
+POST {{baseUrl}}/api/datasets/import/api
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "datasetName": "GitHub Repositories",
+  "apiUrl": "https://api.github.com/repositories",
+  "options": {
+    "httpMethod": "GET",
+    "headers": {
+      "User-Agent": "DataVisualizationAPI/1.0"
+    },
+    "maxRecords": 100,
+    "timeoutSeconds": 30,
+    "flattenNestedObjects": true
+  }
+} 
