@@ -19,8 +19,9 @@ namespace DataVisualizationAPI.Data
 
             // Dataset configurations
             modelBuilder.Entity<Dataset>()
-                .HasIndex(d => d.DatasetName)
-                .IsUnique();
+                // .HasIndex(d => d.DatasetName)
+                // .IsUnique();
+                .HasIndex(d => d.DatasetName);
 
             modelBuilder.Entity<DatasetData>()
                 .HasIndex(d => d.DatasetId);
